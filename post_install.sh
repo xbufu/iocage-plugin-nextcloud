@@ -82,12 +82,12 @@ else
 
 # Configure mysql
 mysql -u root <<-EOF
-UPDATE mysql.user SET Password=PASSWORD('${PASS}') WHERE User='root';
+SET PASSWORD FOR 'root'@'localhost' = '${PASS}';
 DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
 DELETE FROM mysql.user WHERE User='';
 DELETE FROM mysql.db WHERE Db='test' OR Db='test_%';
 
-CREATE USER '${USER}'@'localhost' IDENTIFIED BY '${PASS}';
+CREATE USER '${USER}'@'localhost' IDENTIFIED WITH mysql_native_password BY '${PASS}';
 GRANT ALL PRIVILEGES ON *.* TO '${USER}'@'localhost' WITH GRANT OPTION;
 GRANT ALL PRIVILEGES ON ${DB}.* TO '${USER}'@'localhost';
 FLUSH PRIVILEGES;
@@ -105,8 +105,12 @@ fi
 mv /root/apps-config.php /usr/local/www/nextcloud/config/config.php
 chown www:www /usr/local/www/nextcloud/config/config.php
 
+# Create nextcloud data folder outside of web root
+mkdir /usr/local/nextcloud-data-root
+chown www:www /usr/local/nextcloud-data-root
+
 #Use occ to complete Nextcloud installation
-su -m www -c "php /usr/local/www/nextcloud/occ maintenance:install --database=\"mysql\" --database-name=\"nextcloud\" --database-user=\"$USER\" --database-pass=\"$PASS\" --database-host=\"localhost\" --admin-user=\"$NCUSER\" --admin-pass=\"$NCPASS\" --data-dir=\"/usr/local/www/nextcloud/data\"" 
+su -m www -c "php /usr/local/www/nextcloud/occ maintenance:install --database=\"mysql\" --database-name=\"nextcloud\" --database-user=\"$USER\" --database-pass=\"$PASS\" --database-host=\"localhost\" --admin-user=\"$NCUSER\" --admin-pass=\"$NCPASS\" --data-dir=\"/usr/local/nextcloud-data-root\"" 
 su -m www -c "php /usr/local/www/nextcloud/occ config:system:set trusted_domains 1 --value=\"${IOCAGE_PLUGIN_IP}\""
 su -m www -c "php /usr/local/www/nextcloud/occ db:add-missing-indices"
 
@@ -142,3 +146,5 @@ echo "Database Password: $PASS" >> /root/PLUGIN_INFO
 
 echo "Nextcloud Admin User: $NCUSER" >> /root/PLUGIN_INFO
 echo "Nextcloud Admin Password: $NCPASS" >> /root/PLUGIN_INFO
+
+echo "Nextcloud root folder: /usr/local/nextcloud-data-root" >> /root/PLUGIN_INFO
